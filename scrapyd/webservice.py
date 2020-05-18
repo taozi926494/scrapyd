@@ -29,25 +29,26 @@ class WsResource(JsonResource):
 
 class DaemonStatus(WsResource):
 
-    def to_gb(self, byte):
-        return '%.2fGB' % (byte / 1024 / 1024 / 1024)
-
-    def to_mb(self, byte):
-        return '%.2fGB' % (byte / 1024 / 1024)
+    def format_size(self, byte: int):
+        size = byte / 1024 / 1024
+        if size > 1024:
+           return  '%.2fGB' % (size / 1024)
+        else:
+            return '%.2fMB' % size
 
     def cpu_info(self):
         cpu = psutil.cpu_percent(1)  # 一秒内cpu使用率，单位
         return {
-            "used_percent": '%.2f%%' % cpu
+            "percent": '%.2f%%' % cpu
         }
 
     def mem_info(self):
         mem = psutil.virtual_memory()
         mem_per = '%.2f%%' % mem[2]
         mem_dict = {
-            'total': self.to_gb(mem[0]),
-            'used': self.to_gb(mem[3]),
-            'used_percent': mem_per,
+            'total': self.format_size(mem[0]),
+            'used': self.format_size(mem[3]),
+            'percent': mem_per,
         }
         return mem_dict
 
@@ -55,20 +56,17 @@ class DaemonStatus(WsResource):
         disk = psutil.disk_usage("/")
         per = '%.2f%%' % disk[3]
         return {
-            "total": self.to_gb(disk[0]),
-            "used": self.to_gb(disk[1]),
-            "used_percent": per
+            "total": self.format_size(disk[0]),
+            "used": self.format_size(disk[1]),
+            "percent": per
         }
 
     def network_info(self):
         net = psutil.net_io_counters()
-        net_sent = str(int(net[0] / 1024 / 1024)) + 'MB'
-        net_rece = str(int(net[1] / 1024 / 1024)) + 'MB'
-        net_dict = {
-            'net_cent': net_sent,
-            'net_rece': net_rece
+        return {
+            'send': self.format_size(net[0]),
+            'receive': self.format_size(net[1])
         }
-        return net_dict
 
     def render_GET(self, txrequest):
         pending = sum(q.count() for q in self.root.poller.queues.values())
